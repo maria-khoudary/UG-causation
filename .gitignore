@@ -1,3 +1,7 @@
+exp/node_modules
+
+**/*.*~
+
 # History files
 .Rhistory
 .Rapp.history

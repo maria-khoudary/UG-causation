@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+
+<html>
+    <head>
+      <title>UG</title>
+      <script src="jstat-1.x/dist/jstat.js"></script>
+      <script src="jspsych-6.1.0-1/jspsych.js"></script>
+      <script src="jspsych-6.1.0-1/plugins/jspsych-external-html.js"></script>
+      <script src="jspsych-6.1.0-1/plugins/jspsych-instructions.js"></script>
+      <script src="jspsych-6.1.0-1/plugins/jspsych-html-button-response.js"></script>
+      <script src="jspsych-6.1.0-1/plugins/jspsych-html-slider-response.js"></script>
+      <script src="jspsych-6.1.0-1/plugins/jspsych-survey-html-form.js"></script>
+      <script src="jspsych-6.1.0-1/plugins/jspsych-survey-text.js"></script>
+      <link href="jspsych-6.1.0-1/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+    </head>
+    <body></body>
+</html>
+
+<script>
+  /* Task Parameters */
+  var TEST = false;  // set to TRUE to skip instructions/consent
+  var stakes = 1.00;
+  var stakes_txt = "one dollar";
+  var trials = 2; // number of trials per Player
+  var mcmcTrials = 2; // number of trials per chain per Player (i.e., number of MCMC iterations)
+  var mcmcChains = 1; // number of MCMC chains
+  var stim_size = 150; // height/width of the avatars in px
+  
+  /* Set condition */
+  var id = jsPsych.randomization.randomID();
+  var condition = "accept";
+  //if (Math.random() > 0.5) {
+  //condition = "propose";
+  //}
+
+  console.log('ID: ' + id); console.log('Condition: ' + condition);
+  jsPsych.data.addProperties({
+      id: id,
+      condition: condition
+  });
+
+
+  /* Define Players and draw offers for each trial */
+  players = [{player: "A", avatar: "img/player_A.png", alpha: 5, beta: 20},
+	     {player: "B", avatar: "img/player_B.png", alpha: 20, beta: 20},
+	     {player: "C", avatar: "img/player_C.png", alpha: 20, beta: 5}]
+  trialParams = players.map(function (p) {
+      return Array(trials).fill().map(function () {
+	  let o = { ...p };
+	  o.offer = jStat.beta.sample(p.alpha, p.beta).toFixed(2);
+	  return o;
+      });
+  }).flat();
+
+  /* Define MCMC params for each trial */
+  mcmcParams = players.map(function (player) {
+      arr = Array(mcmcChains);
+      for (c = 0; c < mcmcChains; c++) {
+	  arr[c] = { ...player }; // copy the player Object to avoid mutation
+	  arr[c].choices = ["$" + (Math.random() * stakes).toFixed(2),
+			    "$" + (Math.random() * stakes).toFixed(2)];
+	  arr[c].chain = c+1;
+      }
+      return arr;
+  }).flat();
+
+  /* A convenience function to display the Player avatar */
+  function avatar() {
+      return "<img src='" + jsPsych.timelineVariable('avatar', true) + "' height='" + stim_size + "'>";
+  }
+
+  /* A convenience function for creating check questions */
+  function check_q(name, text, choices, correctAns, loopUntilCorrect=true, required=true) {
+      shuffledChoices = jsPsych.randomization.shuffle(choices);
+      inputHTML = "<div align='left'>";
+      shuffledChoices.forEach(function (c) {
+	  inputHTML = inputHTML +
+	      '<input style="float: left; display: block; margin-top: 8px;" type="radio" id="' + c +
+	      '" name="' + name + '" value="' + c + '"><label for="' + c +
+	      '" style="font-size: 12px; display: block; margin-left: 35px;">' +
+	      c + '</label>'
+      });
+      inputHTML = inputHTML + '</div><br>';
+      
+      return {
+	  timeline: [{
+	      type: 'survey-html-form',
+	      html: "<p>" + text + "</p>" + inputHTML
+	  }],
+	  on_finish: function (data) {
+	      data.response = JSON.parse(data.responses)[name];
+	      data.choices = shuffledChoices;
+	      data.button_pressed = shuffledChoices.indexOf(data.response);
+	      delete data.responses;
+	  },
+	  
+	  loop_function: function (data) {
+	      let response = data.values()[0].response;
+
+	      let responded = response != undefined;
+	      if (required && !responded)
+		  alert('Please respond to the question.');
+	      
+	      let correct = response == choices[correctAns];
+	      if (loopUntilCorrect && !correct)
+		  alert('Your response is incorrect. Please try again.');
+	      
+	      return (required && !responded) || (loopUntilCorrect && !correct);
+	  }
+      };      
+  }
+</script>
+
+<script src="exp-accept.js"></script>
+<script src="exp-propose.js"></script>
+
+<script>
+  /* load the correct timeline */
+  if (condition == "accept") {
+      var timeline = accept_timeline;
+  } else {
+      var timeline = propose_timeline;
+  }
+  
+  /* Display post-questionnaire */
+  var sex_q = check_q('sex', '<p>What is your sex?</p>',
+		      ['Male', 'Female', 'Other'], undefined, false);
+  var age_q = {
+      type: 'survey-text',
+      questions: [{name: "age", prompt: "What is your age?", required: true}],
+      on_finish: function (data) {
+	  data.age = JSON.parse(data.responses).age;
+	  delete data.responses;
+      }
+  };
+  var attn_check = check_q('attnCheck',
+			   "<p align='left'>Please be honest when answering the following question. " +
+			   "<b>Your answer will not affect your payment or eligibility for future studies.</b></p>" +
+			   "<p align='left'>The study you have just participated in is a psychological study aimed at understanding human cognition and behavior. " +
+			   "Psychological research depends on participants like you. " +
+			   "Your responses to surveys like this one are an incredibly valuable source of data for researchers. " +
+			   "It is therefore crucial for research that participants pay attention, avoid distractions, " +
+			   "and take all study tasks seriously (even when they might seem silly).</p>" +
+			   "<p align="left'><b>Do you feel that you paid attention, avoided distractions, and took this survey seriously?</b></p>",
+			   ["No, I was distracted.",
+			    "No, I had trouble paying attention",
+			    "No, I did not take the study seriously",
+			    "No, something else affected my participation negatively.",
+			    "Yes."], 4, false);
+  timeline.push(age_q, sex_q, attn_check);
+  
+  /* start the experiment */
+  jsPsych.init({
+      timeline: timeline,
+      experiment_width: 600,
+      on_finish: function() {
+          jsPsych.data.displayData('csv');
+      }
+  });
+</script>
+

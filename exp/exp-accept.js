@@ -95,8 +95,17 @@ var accept_trial = {
 		    return avatar() + "<p>To what extent did Player " + d.player +
 			" making an offer of $" + d.offer +
 			" cause you to earn $" + d.earned + "?</p><br>"
-		}
-	       }],
+		},
+		labels: ["not at all", "totally"]
+	       },
+
+	       {type: 'html-slider-response',
+		stimulus: function () {
+		    return avatar() + "<p>How confident are you in your response to the previous question?</p><br>"
+		},
+		labels: ["not at all", "totally"]
+	       }
+	      ],
     timeline_variables: trialParams,
     randomize_order: true
 };

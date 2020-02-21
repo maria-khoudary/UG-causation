@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!Doctype html>
 <meta charset="UTF-8">
 
 <html>
@@ -20,12 +20,27 @@
 <script>
   /* Task Parameters */
   var TEST = false;  // set to TRUE to skip instructions/consent
-  var stakes = 1.00;
-  var stakes_txt = "one dollar";
-  var trials = 2; // number of trials per Player
-  var mcmcTrials = 2; // number of trials per chain per Player (i.e., number of MCMC iterations)
-  var mcmcChains = 1; // number of MCMC chains
+  var stakes = 10.00;
+  var stakes_txt = "ten dollars";
+  var trials = 3; // number of trials per Player
+  var mcmcTrials = 3; // number of trials per chain per Player (i.e., number of MCMC iterations)
+  var mcmcChains = 2; // number of MCMC chains
   var stim_size = 150; // height/width of the avatars in px
+  
+  /* Variables for allowing keypresses of buttons */
+  var LEFT_KEY = "ArrowLeft";
+  var RIGHT_KEY = "ArrowRight";
+  var LR_BUTTONS = ['<button class="jspsych-btn" id="left">%choice%</button>',
+		    '<button class="jspsych-btn" id="right">%choice%</button>'];
+  var ALLOW_KEYPRESS = function (trial) {
+      document.onkeydown = function (e) {
+	  if (e.key == LEFT_KEY)
+	      document.getElementById("left").click();
+	  else if (e.key == RIGHT_KEY)
+	      document.getElementById("right").click();
+      }
+  }
+  var DISABLE_KEYPRESS = function () { document.onkeydown = function (e) {} };
   
   /* Set condition */
   var id = jsPsych.randomization.randomID();
@@ -42,10 +57,13 @@
 
 
   /* Define Players and draw offers for each trial */
-  players = [{player: "A", avatar: "img/player_A.png", alpha: 5, beta: 20},
-	     {player: "B", avatar: "img/player_B.png", alpha: 20, beta: 20},
-	     {player: "C", avatar: "img/player_C.png", alpha: 20, beta: 5}]
-  trialParams = players.map(function (p) {
+  var colors = ["Red", "Yellow", "Blue"];
+  var images = colors.map(x => "img/" + x.toLowerCase() + "_player.png");
+  var img_ind = jsPsych.randomization.shuffle([...images.keys()]);
+  var players = [{player: colors[img_ind[0]], avatar: images[img_ind[0]], trait: 'unfair-bad', alpha: 5, beta: 20},
+		 {player: colors[img_ind[1]], avatar: images[img_ind[1]], trait: 'fair', alpha: 20, beta: 20},
+		 {player: colors[img_ind[2]], avatar: images[img_ind[2]], trait: 'unfair-good', alpha: 20, beta: 5}]
+  var trialParams = players.map(function (p) {
       return Array(trials).fill().map(function () {
 	  let o = { ...p };
 	  o.offer = jStat.beta.sample(p.alpha, p.beta).toFixed(2);
@@ -54,7 +72,7 @@
   }).flat();
 
   /* Define MCMC params for each trial */
-  mcmcParams = players.map(function (player) {
+  var mcmcParams = players.map(function (player) {
       arr = Array(mcmcChains);
       for (c = 0; c < mcmcChains; c++) {
 	  arr[c] = { ...player }; // copy the player Object to avoid mutation
@@ -64,6 +82,9 @@
       }
       return arr;
   }).flat();
+  
+  var TRIALS = 4*trialParams.length + mcmcTrials * mcmcParams.length;
+  if (!TEST) TRIALS = TRIALS + 7;
 
   /* A convenience function to display the Player avatar */
   function avatar() {
@@ -110,17 +131,43 @@
 	  }
       };      
   }
+
+  function updateProgress() {
+      p = jsPsych.progress().current_trial_global / TRIALS;
+      
+      console.log('Trial: ' + jsPsych.progress().current_trial_global +
+		  '/' + TRIALS + ', Progress: ' + p);
+      jsPsych.setProgressBar(p);
+  }
 </script>
 
 <script src="exp-accept.js"></script>
 <script src="exp-propose.js"></script>
 
 <script>
+  var timeline = [];
+  
+  /* Get informed consent */
+  var consent = {
+      type:'external-html',
+      url: "consent.html",
+      cont_btn: "start",
+      check_fn: function (elem) {
+	  if (document.getElementById('consent_checkbox').checked) {
+	      return true;
+	  }
+	  
+	  alert("If you wish to participate, you must check the box next to the statement 'I agree to participate in this study.'");
+	  return false;
+      }
+  };
+  if (!TEST) timeline.push(consent);
+  
   /* load the correct timeline */
   if (condition == "accept") {
-      var timeline = accept_timeline;
+      timeline.push(...accept_timeline);
   } else {
-      var timeline = propose_timeline;
+      timeline.push(...propose_timeline);
   }
   
   /* Display post-questionnaire */
@@ -148,15 +195,18 @@
 			    "No, I did not take the study seriously",
 			    "No, something else affected my participation negatively.",
 			    "Yes."], 4, false);
-  timeline.push(age_q, sex_q, attn_check);
+  if (!TEST) timeline.push(age_q, sex_q, attn_check);
   
   /* start the experiment */
   jsPsych.init({
       timeline: timeline,
       experiment_width: 600,
+      on_trial_start: updateProgress,
       on_finish: function() {
           jsPsych.data.displayData('csv');
-      }
+      },
+      preload_images: images,
+      show_progress_bar: true
   });
 </script>
 

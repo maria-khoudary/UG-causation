@@ -1,22 +1,6 @@
 /* create timeline */
 var accept_timeline = [];
 
-/* Get informed consent */
-var consent = {
-    type:'external-html',
-    url: "consent.html",
-    cont_btn: "start",
-    check_fn: function (elem) {
-	if (document.getElementById('consent_checkbox').checked) {
-	    return true;
-	}
-	
-	alert("If you wish to participate, you must check the box next to the statement 'I agree to participate in this study.'");
-	return false;
-    }
-};
-if (!TEST) accept_timeline.push(consent);
-
 /* Display instructions trials */
 var instructions_accept = {
     type: 'instructions',
@@ -25,17 +9,16 @@ var instructions_accept = {
 	    "), and you must decide how to split it between the two of you.</p><br><p>Here's how it works:</p>",
 	    "<p>First, your partner will offer you some portion of the money.</p><p>They can offer you any amount between $0.00 and $" + stakes.toFixed(2) + ".</p>",
 	    "<p>Once your partner makes an offer, you may either accept or reject this offer.</p>" +
-	    "<p>If you accept the offer, then you will receive the amount of money offered to you, and your partner will get the rest. " +
-	    "All of the money you earn through this game will be provided as a bonus after you complete the survey.</p>" +
-	    "<p>If you reject the offer, then nobody gets any money after all.</p>",
-	    "<img src='img/player_A.png' height='" + stim_size + "'>" +
-	    "<img src='img/player_B.png' height='" + stim_size + "'>" +
-	    "<img src='img/player_C.png' height='" + stim_size + "'>" +
+	    "<p>If you accept the offer, then you will receive the amount of money offered to you, and your partner will get the rest.</p>" +
+	    "<p>If you reject the offer, then nobody gets any money after all.</p><br>" +
+	    "<p><b>As a bonus, you will receive the amount of money that you earn from a randomly selected round of the game.</b></p>",
+	    "<img src='img/red_player.png' height='" + stim_size + "'>" +
+	    "<img src='img/yellow_player.png' height='" + stim_size + "'>" +
+	    "<img src='img/blue_player.png' height='" + stim_size + "'>" +
 	    "<p>One more thing about this game: in each round of the game, " +
-	    "you will play with one of three partners: Player A, Player B, and Player C. " +
-	    "Before each round, you will be told which AI partner you are playing with.</p>"],
-    show_clickable_nav: true,
-    allow_keys: false
+	    "you will play with one of three partners: Red, Yellow, or Blue. " +
+	    "Before each round, you will be told which partner you are playing with.</p>"],
+    show_clickable_nav: true
 };
 if (!TEST) accept_timeline.push(instructions_accept);
 
@@ -53,16 +36,18 @@ if (!TEST)
 var accept_trial = {
     timeline: [{type: 'html-button-response',
 		stimulus: function () {
-		    return avatar() + "<p>You are now playing with Player " +
+		    return avatar() + "<p>You are now playing with " +
 			jsPsych.timelineVariable('player', true) + ".</p><p>" +
-			"Player " + jsPsych.timelineVariable('player', true) +
-			" has offered you $" +
+			jsPsych.timelineVariable('player', true) + " has offered you $" +
 			jsPsych.timelineVariable('offer', true) + " out of $" +
 			stakes.toFixed(2) + ".</p>" +
 			"<p>Do you accept this offer?</p><br>"
 		},
 		choices: ["Yes", "No"],
+		button_html: LR_BUTTONS,
+		on_start: ALLOW_KEYPRESS,
 		on_finish: function (data) {
+		    DISABLE_KEYPRESS();
 		    data.player = jsPsych.timelineVariable('player', true);
 		    data.offer = jsPsych.timelineVariable('offer', true);
 		    data.accept = data.button_pressed == 0;
@@ -79,20 +64,19 @@ var accept_trial = {
 	       {type: 'instructions',
 		pages: function () {
 		    d = jsPsych.data.getLastTrialData().values()[0];
-		    return [avatar() + "<p>You have " + d.response + "ed Player " +
+		    return [avatar() + "<p>You have " + d.response + "ed " +
 			    jsPsych.timelineVariable('player', true) + "'s offer of $" +
 			    d.offer + " out of $" + stakes.toFixed(2) + ".<p>" +
 			    "As a result, you have earned $" +
 			    jsPsych.data.getLastTrialData().values()[0].earned + ".</p>"
 			   ]},
 		show_clickable_nav: true,
-		allow_keys: false,
 		allow_backward: false},
 	       
 	       {type: 'html-slider-response',
 		stimulus: function () {
 		    d = jsPsych.data.get().last(2).first(1).values()[0];
-		    return avatar() + "<p>To what extent did Player " + d.player +
+		    return avatar() + "<p>To what extent did " + d.player +
 			" making an offer of $" + d.offer +
 			" cause you to earn $" + d.earned + "?</p><br>"
 		},
@@ -107,7 +91,8 @@ var accept_trial = {
 	       }
 	      ],
     timeline_variables: trialParams,
-    randomize_order: true
+    randomize_order: true,
+    data: {stage: 1}
 };
 accept_timeline.push(accept_trial);
 
@@ -119,8 +104,7 @@ var instructions_mcmc_accept = {
 	    "<p>To do so, we will first tell you which partner you are playing with.</p>" +
 	    "<p>Then you'll be shown two possible offers, and you will be asked:</p><br><p>\"Which offer is more likely?\"</p><br>" +
 	    "<p>Please choose the offer amount that your partner is most likely to have offered.</p>"],
-    show_clickable_nav: true,
-    allow_keys: false
+    show_clickable_nav: true
 };
 if (!TEST) accept_timeline.push(instructions_mcmc_accept);
 
@@ -129,7 +113,7 @@ var trials_mcmc_accept = {
     timeline: [{
 	type: 'html-button-response',
 	stimulus: function () {
-	    return avatar() + "<p>Which offer is Player " +
+	    return avatar() + "<p>Which offer is " +
 		jsPsych.timelineVariable('player', true) +
 		" more likely to make?</p>"
 	},
@@ -149,7 +133,10 @@ var trials_mcmc_accept = {
 	    }
 	    return choices;
 	},
+	button_html: LR_BUTTONS,
+	on_start: ALLOW_KEYPRESS,
 	on_finish: function(data) {
+	    DISABLE_KEYPRESS();
 	    data.choices = jsPsych.currentTrial().choices;
 	    data.choice = data.choices[data.button_pressed];
 	    data.player = jsPsych.timelineVariable('player', true);

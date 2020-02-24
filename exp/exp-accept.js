@@ -12,6 +12,7 @@ var instructions_accept = {
 	    "<p>If you accept the offer, then you will receive the amount of money offered to you, and your partner will get the rest.</p>" +
 	    "<p>If you reject the offer, then nobody gets any money after all.</p><br>" +
 	    "<p><b>As a bonus, you will receive the amount of money that you earn from a randomly selected round of the game.</b></p>",
+	    "<p>In addition to clicking on the buttons, you may use the left and right arrow keys to make responses.</p>",
 	    "<img src='img/red_player.png' height='" + stim_size + "'>" +
 	    "<img src='img/yellow_player.png' height='" + stim_size + "'>" +
 	    "<img src='img/blue_player.png' height='" + stim_size + "'>" +
@@ -46,16 +47,14 @@ var accept_trial = {
 		choices: ["Yes", "No"],
 		button_html: LR_BUTTONS,
 		on_start: ALLOW_KEYPRESS,
+		data: {measure: "UG"},
 		on_finish: function (data) {
 		    DISABLE_KEYPRESS();
-		    data.player = jsPsych.timelineVariable('player', true);
-		    data.offer = jsPsych.timelineVariable('offer', true);
 		    data.accept = data.button_pressed == 0;
+
 		    if (data.accept) {
-			data.response = "accept";
 			data.earned = jsPsych.timelineVariable('offer', true);
 		    } else {
-			data.response = "reject";
 			data.earned = "0.00";
 		    }
 		}
@@ -80,19 +79,26 @@ var accept_trial = {
 			" making an offer of $" + d.offer +
 			" cause you to earn $" + d.earned + "?</p><br>"
 		},
-		labels: ["not at all", "totally"]
+		labels: ["not at all", "totally"],
+		data: {measure: "cause"}
 	       },
 
 	       {type: 'html-slider-response',
 		stimulus: function () {
 		    return avatar() + "<p>How confident are you in your response to the previous question?</p><br>"
 		},
-		labels: ["not at all", "totally"]
+		labels: ["not at all", "totally"],
+		data: {measure: "confidence"}
 	       }
 	      ],
     timeline_variables: trialParams,
     randomize_order: true,
-    data: {stage: 1}
+    on_finish: function (data) {
+	data.stage = 1;
+	data.player = jsPsych.timelineVariable('player', true);
+	data.offer = jsPsych.timelineVariable('offer', true);
+	console.log(data);
+    }
 };
 accept_timeline.push(accept_trial);
 
@@ -103,7 +109,7 @@ var instructions_mcmc_accept = {
     pages: ["<p>Great work!</p><br><p>Now, we want to learn what you think of the different players in this game.</p>",
 	    "<p>To do so, we will first tell you which partner you are playing with.</p>" +
 	    "<p>Then you'll be shown two possible offers, and you will be asked:</p><br><p>\"Which offer is more likely?\"</p><br>" +
-	    "<p>Please choose the offer amount that your partner is most likely to have offered.</p>"],
+	    "<p><b>Please choose the offer amount that your partner is most likely to have offered.<b></p>"],
     show_clickable_nav: true
 };
 if (!TEST) accept_timeline.push(instructions_mcmc_accept);
@@ -121,7 +127,7 @@ var trials_mcmc_accept = {
 	    let choices = jsPsych.timelineVariable('choices', true);
 	    lastTrial = jsPsych.data.get().filter({
 		player: jsPsych.timelineVariable('player', true),
-		chain: jsPsych.timelineVariable('chain', true)
+		chain: jsPsych.timelineVariable('chain', true) 
 	    }).last(1).values()[0];
 
 	    // Use one of the choices from the last trial in this chain,
@@ -138,13 +144,14 @@ var trials_mcmc_accept = {
 	on_finish: function(data) {
 	    DISABLE_KEYPRESS();
 	    data.choices = jsPsych.currentTrial().choices;
-	    data.choice = data.choices[data.button_pressed];
+	    data.response = data.choices[data.button_pressed];
 	    data.player = jsPsych.timelineVariable('player', true);
 	    data.chain = jsPsych.timelineVariable('chain', true);
 	}
     }],
     timeline_variables: mcmcParams,
     repetitions: mcmcTrials,
-    randomize_order: true
+    randomize_order: true,
+    data: {stage: 2, measure: "mcmc"}
 };
 accept_timeline.push(trials_mcmc_accept)

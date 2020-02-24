@@ -1,6 +1,6 @@
-exp/node_modules
-
+# Backup files
 **/*.*~
+**/.#*
 
 # History files
 .Rhistory

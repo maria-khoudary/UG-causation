@@ -41,9 +41,10 @@ var propose_trial = {
 			jsPsych.timelineVariable('player', true) + "?</p>"
 		},
 		labels: ["$0.00", "$" + stakes.toFixed(2)],
+		data: {measure: "offer"},
 		on_finish: function (data) {
 		    data.player = jsPsych.timelineVariable('player', true);
-		    data.offer = data.response / 100;
+		    data.offer = data.response;
 		    
 		    data.accept = Math.random() <
 			jStat.beta.cdf(data.offer, jsPsych.timelineVariable('alpha', true),
@@ -139,13 +140,14 @@ var trials_mcmc_propose = {
 	on_finish: function(data) {
 	    DISABLE_KEYPRESS();
 	    data.choices = choices;
-	    data.choice = choices[data.button_pressed];
+	    data.response = choices[data.button_pressed];
 	    data.player = jsPsych.timelineVariable('player', true);
 	    data.chain = jsPsych.timelineVariable('chain', true);
 	}
     }],
     timeline_variables: mcmcParams,
     repetitions: mcmcTrials,
-    randomize_order: true
+    randomize_order: true,
+    data: {stage: 2, measure: "mcmc"}
 };
 propose_timeline.push(trials_mcmc_propose);

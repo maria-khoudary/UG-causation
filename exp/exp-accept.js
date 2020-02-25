@@ -50,55 +50,73 @@ var accept_trial = {
 		data: {measure: "UG"},
 		on_finish: function (data) {
 		    DISABLE_KEYPRESS();
+		    data.stage = 1;
+		    data.player = jsPsych.timelineVariable('player', true);
+		    data.offer = jsPsych.timelineVariable('offer', true);
 		    data.accept = data.button_pressed == 0;
-
+		    if (data.accept)
+			data.response = "accept";
+		    else
+			data.response = "reject";
+		    
 		    if (data.accept) {
 			data.earned = jsPsych.timelineVariable('offer', true);
 		    } else {
 			data.earned = "0.00";
 		    }
 		}
-	       },
-
-	       {type: 'instructions',
-		pages: function () {
+	       },	       
+	       {type: 'html-slider-response',
+		stimulus: function () {
 		    d = jsPsych.data.getLastTrialData().values()[0];
-		    return [avatar() + "<p>You have " + d.response + "ed " +
-			    jsPsych.timelineVariable('player', true) + "'s offer of $" +
-			    d.offer + " out of $" + stakes.toFixed(2) + ".<p>" +
-			    "As a result, you have earned $" +
-			    jsPsych.data.getLastTrialData().values()[0].earned + ".</p>"
-			   ]},
-		show_clickable_nav: true,
-		allow_backward: false},
-	       
+		    return avatar() +
+			"<p>You have " + d.response + "ed " +
+			d.player + "'s offer of $" + d.offer +
+			" out of $" + stakes.toFixed(2) + ".<p>" +
+			"As a result, you have earned $" + d.earned + ".</p><br>" +
+			"<p><b>To what extent did " + d.player +
+			" making an offer of $" + d.offer +
+			" cause you to earn $" + d.earned + " in this round?</b></p><br>"
+		},
+		labels: ["not at all", "totally"],
+		on_finish: function (data) {
+		    d = jsPsych.data.getLastTrialData().values()[0];
+		    data.stage = 1;
+		    data.player = jsPsych.timelineVariable('player', true);
+		    data.offer = jsPsych.timelineVariable('offer', true);
+		    data.measure = "cause";
+		}
+	       },
 	       {type: 'html-slider-response',
 		stimulus: function () {
 		    d = jsPsych.data.get().last(2).first(1).values()[0];
-		    return avatar() + "<p>To what extent did " + d.player +
+		    d2 = jsPsych.data.getLastTrialData().values()[0];
+		    return avatar() +
+			"<p>You have " + d.response + "ed " +
+			d.player + "'s offer of $" + d.offer +
+			" out of $" + stakes.toFixed(2) + ".<p>" +
+			"As a result, you have earned $" + d.earned + ".</p><br>" +
+			"<p>To what extent did " + d.player +
 			" making an offer of $" + d.offer +
-			" cause you to earn $" + d.earned + "?</p><br>"
+			" cause you to earn $" + d.earned + " in this round?</p><br>" +
+			'<div class="jspsych-image-slider-response-container" style="position:relative; margin: 0 auto 3em auto;">' +
+			"<input type='range' disabled='true' style='width: 100%' value='" + d2.response + "'>" +
+			'<div><div style="display: inline-block; position: absolute; left:-50%; text-align: center; width: 100%;">' +
+			'<span style="text-align: center; font-size: 80%;">not at all</span></div>' +
+			'<div style="display: inline-block; position: absolute; left:50%; text-align: center; width: 100%;">' +
+			'<span style="text-align: center; font-size: 80%;">totally</span></div></div></div><br><br>' +
+			"<p><b>How confident are you in your response to the previous question?</b></p>"
 		},
 		labels: ["not at all", "totally"],
-		data: {measure: "cause"}
-	       },
-
-	       {type: 'html-slider-response',
-		stimulus: function () {
-		    return avatar() + "<p>How confident are you in your response to the previous question?</p><br>"
-		},
-		labels: ["not at all", "totally"],
-		data: {measure: "confidence"}
-	       }
-	      ],
+		on_finish: function (data) {
+		    data.stage = 1;
+		    data.player = jsPsych.timelineVariable('player', true);
+		    data.offer = jsPsych.timelineVariable('offer', true);
+		    data.measure = "confidence";
+		}
+	       }],
     timeline_variables: trialParams,
-    randomize_order: true,
-    on_finish: function (data) {
-	data.stage = 1;
-	data.player = jsPsych.timelineVariable('player', true);
-	data.offer = jsPsych.timelineVariable('offer', true);
-	console.log(data);
-    }
+    randomize_order: true
 };
 accept_timeline.push(accept_trial);
 

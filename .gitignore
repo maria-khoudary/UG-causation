@@ -1,11 +1,17 @@
+# dependencies
 exp/node_modules
+
+# Images and data files
 **/*.pdf
 **/*.png
 **/*.jpg
 **/*.rds
 **/*.pptx
-**/*.*~
 analyses/data
+
+# Backup files
+**/*.*~
+**/.#*
 
 # History files
 .Rhistory

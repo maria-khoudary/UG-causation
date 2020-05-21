@@ -41,9 +41,11 @@ var propose_trial = {
 			jsPsych.timelineVariable('player', true) + "?</p>"
 		},
 		labels: ["$0.00", "$" + stakes.toFixed(2)],
+		data: {measure: "offer"},
+		max: stakes, step: 0.01, start: stakes/2.0,
 		on_finish: function (data) {
 		    data.player = jsPsych.timelineVariable('player', true);
-		    data.offer = data.response / 100;
+		    data.offer = parseFloat(data.response);
 		    
 		    data.accept = Math.random() <
 			jStat.beta.cdf(data.offer, jsPsych.timelineVariable('alpha', true),
@@ -57,32 +59,41 @@ var propose_trial = {
 		    }
 		}
 	       },
-
-	       {type: 'instructions',
-		pages: function () {
-		    d = jsPsych.data.getLastTrialData().values()[0];
-		    return [avatar() + "<p>You have offered " + d.player + " $" +
-			    d.offer.toFixed(2) + " out of $" + stakes.toFixed(2) +".</p>" +
-			    "<p>" + d.player + " has " + d.response + "ed your offer.<p>" +
-			    "<p>As a result, you have earned $" + d.earned.toFixed(2) + ".</p>"
-			   ]},
-		show_clickable_nav: true,
-		allow_backward: false
-	       },
 	       
 	       {type: 'html-slider-response',
 		stimulus: function () {
-		    d = jsPsych.data.get().last(2).first(1).values()[0]
-		    return avatar() + "<p>To what extent did " + d.player +
+		    d = jsPsych.data.getLastTrialData().values()[0]
+		    return avatar() +
+			"<p>You have offered " + d.player + " $" +
+			d.offer.toFixed(2) + " out of $" + stakes.toFixed(2) +".</p>" +
+			"<p>" + d.player + " has " + d.response + "ed your offer.<p>" +
+			"<p>As a result, you have earned $" + d.earned.toFixed(2) + ".</p>" +
+			"<p><b>To what extent did " + d.player +
 			" " + d.response + "ing your offer of $" + d.offer.toFixed(2) +
-			" cause you to earn $" + d.earned.toFixed(2) + "?</p><br>"
+			" cause you to earn $" + d.earned.toFixed(2) + " in this round?</b></p><br>"
 		},
 		labels: ["not at all", "totally"]
 	       },
 	       
 	       {type: 'html-slider-response',
 		stimulus: function () {
-		    return avatar() + "<p>How confident are you in your response to the previous question?</p><br>"
+		    d = jsPsych.data.get().last(2).first(1).values()[0];
+		    d2 = jsPsych.data.getLastTrialData().values()[0];
+		    return avatar() +
+			"<p>You have offered " + d.player + " $" +
+			d.offer.toFixed(2) + " out of $" + stakes.toFixed(2) +".</p>" +
+			"<p>" + d.player + " has " + d.response + "ed your offer.<p>" +
+			"<p>As a result, you have earned $" + d.earned.toFixed(2) + ".</p>" +
+			"<p>To what extent did " + d.player +
+			" " + d.response + "ing your offer of $" + d.offer.toFixed(2) +
+			" cause you to earn $" + d.earned.toFixed(2) + " in this round?</p><br>" +
+			'<div class="jspsych-image-slider-response-container" style="position:relative; margin: 0 auto 3em auto;">' +
+			"<input type='range' disabled='true' style='width: 100%' value='" + d2.response + "'>" +
+			'<div><div style="display: inline-block; position: absolute; left:-50%; text-align: center; width: 100%;">' +
+			'<span style="text-align: center; font-size: 80%;">not at all</span></div>' +
+			'<div style="display: inline-block; position: absolute; left:50%; text-align: center; width: 100%;">' +
+			'<span style="text-align: center; font-size: 80%;">totally</span></div></div></div><br><br>' +
+			"<p><b>How confident are you in your response to the previous question?</b></p><br>"
 		},
 		labels: ["not at all", "totally"]
 	       }
@@ -139,13 +150,14 @@ var trials_mcmc_propose = {
 	on_finish: function(data) {
 	    DISABLE_KEYPRESS();
 	    data.choices = choices;
-	    data.choice = choices[data.button_pressed];
+	    data.response = choices[data.button_pressed];
 	    data.player = jsPsych.timelineVariable('player', true);
 	    data.chain = jsPsych.timelineVariable('chain', true);
 	}
     }],
     timeline_variables: mcmcParams,
     repetitions: mcmcTrials,
-    randomize_order: true
+    randomize_order: true,
+    data: {stage: 2, measure: "mcmc"}
 };
 propose_timeline.push(trials_mcmc_propose);

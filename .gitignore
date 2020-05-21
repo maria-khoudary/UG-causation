@@ -1,6 +1,11 @@
 exp/node_modules
-
+**/*.pdf
+**/*.png
+**/*.jpg
+**/*.rds
+**/*.pptx
 **/*.*~
+analyses/data
 
 # History files
 .Rhistory

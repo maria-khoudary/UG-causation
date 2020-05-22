@@ -1,3 +1,4 @@
+#!/usr/bin/Rscript
 ##
 ## Simulate data for UG with causal judgments
 ##
@@ -10,12 +11,15 @@ library(ggeffects)
 
 cat('\nSetting up priors...')
 
+sA <- 5
+sB <- 20
+
 ## prior definitions for AI players
 priors.ai <- data.frame(player=c('A', 'B', 'C'),
-                        offer.s1=c(5, 20, 20),
-                        offer.s2=c(20, 20, 5),
-                        accept.s1=c(20, 20, 5),
-                        accept.s2=c(5, 20, 20))
+                        offer.s1=c(sA, sB, sB),
+                        offer.s2=c(sB, sB, sA),
+                        accept.s1=c(sB, sB, sA),
+                        accept.s2=c(sA, sB, sB))
 
 ## Display densities of AI priors for proposing/accepting offers
 png('ai-proposal-prior.png')

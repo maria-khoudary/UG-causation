@@ -7,7 +7,7 @@ exp/node_modules
 **/*.jpg
 **/*.rds
 **/*.pptx
-analyses/data
+**/data
 
 # Backup files
 **/*.*~

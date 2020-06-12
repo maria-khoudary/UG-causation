@@ -1,5 +1,6 @@
 /* create timeline */
 var propose_timeline = [];
+var PROPOSE_TRIALS = 0;
 
 /* Display instructions trials */
 var instructions_propose = {
@@ -12,23 +13,28 @@ var instructions_propose = {
           "<p>Once you make an offer, your partner may either accept or reject this offer.</p>" +
           "<p>If they accept the offer, then they will receive the amount of money you offered to them, and you will get the rest. " +
           "All of the money you earn through this game will be provided as a bonus after you complete the survey.</p>" +
-          "<p>If you reject the offer, then nobody gets any money in that round after all.</p>",
+          "<p>If you reject the offer, then nobody gets any money in that round.</p>",
           "<img src='img/red_player.png' height='" + stim_size + "'>" +
           "<img src='img/yellow_player.png' height='" + stim_size + "'>" +
           "<img src='img/blue_player.png' height='" + stim_size + "'>" +
           "<br><p>One more thing about this game: in each round of the game, you will play with one of three partners: Red, Yellow, or Blue. " +
           "Before each round, you will be told which partner you are playing with.</p>"]
 };
-if (!TEST) propose_timeline.push(instructions_propose);
+if (!TEST) {
+  propose_timeline.push(instructions_propose);
+  PROPOSE_TRIALS = PROPOSE_TRIALS + 1;
+}
 
 /* Display check questions and loop until correct */
 var check_choices = ["Your partner gets the amount of money specified in the offer, but you get nothing.",
             		     "Neither player recieves any money",
             		     "Your partner gets the amount of money specified in the offer, and you get the rest.",
             		     "You get the amount of money specified in the offer, and your partner gets the rest."];
-if (!TEST)
-    propose_timeline.push(check_q("check1", "Check question: what happens when your partner accepts an offer?", check_choices, 2),
-			                    check_q("check2", "Check question: what happens when your partner rejects an offer?", check_choices, 1));
+if (!TEST) {
+  propose_timeline.push(check_q("check1", "Check question: what happens when your partner accepts an offer?", check_choices, 2),
+		                    check_q("check2", "Check question: what happens when your partner rejects an offer?", check_choices, 1));
+  PROPOSE_TRIALS = PROPOSE_TRIALS + 2;
+}
 
 var propose_cause = {
   type: 'html-slider-response',
@@ -92,7 +98,6 @@ var propose_confidence = {
                                jsPsych.timelineVariable('beta', true))
   }
 };
-
 var propose_feedback = {
   type: 'instructions',
   show_clickable_nav: true,
@@ -105,12 +110,8 @@ var propose_feedback = {
   }
 };
 
-/* test trials */
-var propose_trial = {
-  timeline_variables: trialParams,
-  randomize_order: true,
-  data: {stage: 1},
-  timeline: [{
+function propose_trial(params, stage, cause=false) {
+  let UGtrial = {
     type: 'html-slider-response',
     stimulus: function () {
      return avatar() + "<p>You are now playing with " +
@@ -132,10 +133,6 @@ var propose_trial = {
                 				        jsPsych.timelineVariable('alpha', true),
                 				        jsPsych.timelineVariable('beta', true))
 
-      console.log(jsPsych.timelineVariable('trait', true));
-      console.log(data.offer/stakes);
-      console.log(data.prob);
-
       data.accept = Math.random() < data.prob;
       if (data.accept) {
         data.response = 'accept';
@@ -145,10 +142,22 @@ var propose_trial = {
         data.earned = 0.00;
       }
     }
-  }, propose_feedback]
-};
-if (trials > 0) propose_timeline.push(propose_trial);
+  };
 
+  return {
+    timeline_variables: params,
+    randomize_order: true,
+    data: {stage: stage},
+    timeline: (cause ? [UGtrial, propose_cause, propose_confidence] : [UGtrial, propose_feedback])
+  };
+}
+
+/* learning trials */
+if (learnTrials > 0) {
+  let trials = propose_trial(trialParams, stage=1, cause=false);
+  propose_timeline.push(trials);
+  PROPOSE_TRIALS = PROPOSE_TRIALS + trials.timeline_variables.length * trials.timeline.length;
+}
 
 /* Instructions for MCMC section */
 var instructions_mcmc_propose = {
@@ -160,8 +169,10 @@ var instructions_mcmc_propose = {
           "<p>Please determine how likely it is for your partner to accept that offer.</p>"
    ]
 };
-if (!TEST) propose_timeline.push(instructions_mcmc_propose);
-
+if (!TEST) {
+  propose_timeline.push(instructions_mcmc_propose);
+  PROPOSE_TRIALS = PROPOSE_TRIALS + 1;
+}
 
 var choices;  // use this var to keep track of the choices on every MCMC trial
 
@@ -189,4 +200,29 @@ var trials_mcmc_propose = {
   	}
   }]
 };
-propose_timeline.push(trials_mcmc_propose);
+if (mcmcTrials.length > 0) {
+  propose_timeline.push(trials_mcmc_propose);
+  PROPOSE_TRIALS = PROPOSE_TRIALS + trials_mcmc_propose.length;
+}
+
+
+// Instructions for test section
+var instructions_test_propose = {
+  type: 'instructions',
+  pages: ["<p>Great work!</p><br><p>Finally, in this last phase, you're going to play the game a few more times.</p>",
+          "<p>Now, after each round of the game, you'll be asked the extent to which your partner accepting or rejecting your offer caused you to make money or not in that round.</p>" +
+          "<p>Then you'll be asked to rate how confident you are in that judgment.</p>" +
+          "<p><b>Please rate how much your partner's decision to accept or reject your offer caused you to make money or not in each round.<b></p>"],
+  show_clickable_nav: true
+};
+if (!TEST) {
+  propose_timeline.push(instructions_test_propose);
+  PROPSOE_TRIALS = PROPOSE_TRIALS + 1;
+}
+
+// test trials
+if (testTrials > 0) {
+  let trials = propose_trial(testParams, stage=3, cause=true);
+  propose_timeline.push(trials);
+  PROPOSE_TRIALS = PROPOSE_TRIALS + trials.timeline_variables.length * trials.timeline.length;
+}

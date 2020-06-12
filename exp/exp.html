@@ -28,7 +28,7 @@ var TEST = false;  // set to true to skip instructions/consent
 var stakes = 10.00;
 var stakes_txt = "ten dollars";
 var learnTrials = 25; // number of learning trials per Player
-var mcmcTrials = 75; // number of trials per chain per Player (i.e., number of MCMC iterations)
+var mcmcTrials = 50; // number of trials per chain per Player (i.e., number of MCMC iterations)
 var mcmcChains = 3; // number of MCMC chains
 var testTrials = 11; // number of test trials per Player
 var stim_size = 150; // height/width of the avatars in px
@@ -67,12 +67,19 @@ jsPsych.data.addProperties({
 
 
 /* Define Players and draw offers for each trial */
+var concentration = 10;
 var colors = ["Red", "Yellow", "Blue"];
 var images = colors.map(x => "https://dibs-web01.vm.duke.edu/debrigard/UG-causation/exp/img/" + x.toLowerCase() + "_player.png");
 var img_ind = jsPsych.randomization.shuffle([...images.keys()]);
-var players = [{player: colors[img_ind[0]], avatar: images[img_ind[0]], trait: 'unfair-bad', alpha: 5, beta: 20},
-               {player: colors[img_ind[1]], avatar: images[img_ind[1]], trait: 'fair', alpha: 20, beta: 20},
-               {player: colors[img_ind[2]], avatar: images[img_ind[2]], trait: 'unfair-good', alpha: 20, beta: 5}]
+var players = [{player: colors[img_ind[0]], avatar: images[img_ind[0]], trait: 'unfair-bad', rate: 0.2},
+               {player: colors[img_ind[1]], avatar: images[img_ind[1]], trait: 'fair', rate: 0.5},
+               {player: colors[img_ind[2]], avatar: images[img_ind[2]], trait: 'unfair-good', rate: 0.8}].map(function(x) {
+                 x.alpha = x.rate * concentration;
+                 x.beta = (1.0 - x.rate) * concentration;
+                 return x;
+               });
+
+
 if (condition == 'propose') {
   // swap alpha and beta
   players = players.map(function (p) {

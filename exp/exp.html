@@ -25,115 +25,8 @@ var EXP_NAME = "pilot";
 
 /* Task Parameters */
 var TEST = false;  // set to true to skip instructions/consent
-var stakes = 10.00;
-var stakes_txt = "ten dollars";
-var learnTrials = 25; // number of learning trials per Player
-var mcmcTrials = 50; // number of trials per chain per Player (i.e., number of MCMC iterations)
-var mcmcChains = 3; // number of MCMC chains
-var testTrials = 11; // number of test trials per Player
-var stim_size = 150; // height/width of the avatars in px
-var TRIAL_DURATION = null;
-var POST_TRIAL_GAP = 250;
-var TRIALS = 0; // this will be computed dynamically
+var TRIALS = 0;
 
-/* Variables for allowing keypresses of buttons */
-var LEFT_KEY = "ArrowLeft";
-var RIGHT_KEY = "ArrowRight";
-var LR_BUTTONS = ['<button class="jspsych-btn" id="left">%choice%</button>',
-	                '<button class="jspsych-btn" id="right">%choice%</button>'];
-var ALLOW_KEYPRESS = function (trial) {
-  setTimeout(function () {
-    document.onkeydown = function (e) {
-    if (e.key == LEFT_KEY)
-      document.getElementById("left").click();
-    else if (e.key == RIGHT_KEY)
-      document.getElementById("right").click();
-    }
-  }, 200);
-}
-var DISABLE_KEYPRESS = function () { document.onkeydown = function (e) {} };
-
-/* Set condition */
-var id = jsPsych.randomization.randomID();
-var condition = "accept";
-//if (Math.random() > 0.5) {
-//condition = "propose";
-//}
-console.log('ID: ' + id); console.log('Condition: ' + condition);
-jsPsych.data.addProperties({
-  id: id,
-  condition: condition
-});
-
-
-/* Define Players and draw offers for each trial */
-var concentration = 10;
-var colors = ["Red", "Yellow", "Blue"];
-var images = colors.map(x => "https://dibs-web01.vm.duke.edu/debrigard/UG-causation/exp/img/" + x.toLowerCase() + "_player.png");
-var img_ind = jsPsych.randomization.shuffle([...images.keys()]);
-var players = [{player: colors[img_ind[0]], avatar: images[img_ind[0]], trait: 'unfair-bad', rate: 0.2},
-               {player: colors[img_ind[1]], avatar: images[img_ind[1]], trait: 'fair', rate: 0.5},
-               {player: colors[img_ind[2]], avatar: images[img_ind[2]], trait: 'unfair-good', rate: 0.8}].map(function(x) {
-                 x.alpha = x.rate * concentration;
-                 x.beta = (1.0 - x.rate) * concentration;
-                 return x;
-               });
-
-
-if (condition == 'propose') {
-  // swap alpha and beta
-  players = players.map(function (p) {
-    let a = p.alpha;
-    p.alpha = p.beta;
-    p.beta = a;
-    return p;
-  });
-}
-
-var trialParams = players.map(function (p) {
-  return Array(learnTrials).fill().map(function () {
-    let o = { ...p };
-    o.offer = (jStat.beta.sample(p.alpha, p.beta) * stakes).toFixed(2);
-    return o;
-  });
-}).flat();
-
-/* Define MCMC and test params for each trial */
-if (condition == 'accept') {
-  var mcmcParams = players.map(function (player) {
-    arr = Array(mcmcChains);
-    for (c = 0; c < mcmcChains; c++) {
-      arr[c] = { ...player }; // copy the player Object to avoid mutation
-      arr[c].choices = ["$" + (jStat.beta.sample(player.alpha, player.beta) * stakes).toFixed(2),
-		                    "$" + (jStat.beta.sample(player.alpha, player.beta) * stakes).toFixed(2)];
-      arr[c].chain = c+1;
-    }
-    return arr;
-  }).flat();
-  var testParams = players.map(function (player) {
-    return [...Array(testTrials).keys()].map(function (i) {
-      let o = { ...player };
-      o.offer = (stakes * (i / (testTrials-1))).toFixed(2);
-      return o;
-    });
-  }).flat();
-} else {
-  var mcmcParams = players.map(function (player) {
-    return [...Array(mcmcTrials * mcmcChains).keys()].map(function (i) {
-      let o = { ...player };
-      o.offer = (stakes * (i / (mcmcTrials*mcmcChains-1))).toFixed(2);
-      return o;
-    });
-  }).flat();
-
-  // idk what to do in test for propose condition
-  var testParams = [];
-}
-
-/* A convenience function to display the Player avatar */
-function avatar() {
-  return "<img src='" + jsPsych.timelineVariable('avatar', true) + "' height='" + stim_size + "'>";
-}
 
 /* A convenience function for creating check questions */
 function check_q(name, text, choices, correctAns, loopUntilCorrect=true, required=true) {
@@ -179,16 +72,6 @@ function check_q(name, text, choices, correctAns, loopUntilCorrect=true, require
     }
   };
 }
-
-function updateProgress() {
-  jsPsych.setProgressBar(jsPsych.progress().current_trial_global / TRIALS);
-}
-
-function sampleOffer(mu, sigma=stakes/10, min=0, max=stakes) {
-  if (typeof mu == "string")
-    mu = parseFloat(mu.substr(1));
-  return Math.min(Math.max(jStat.normal.sample(mu, sigma), min), max);
-}
 </script>
 
 <script src="exp-accept.js"></script>
@@ -196,7 +79,7 @@ function sampleOffer(mu, sigma=stakes/10, min=0, max=stakes) {
 
 <script>
 var timeline = [];
-
+  
 /* Get informed consent */
 var consent = {
   type:'external-html',
@@ -223,14 +106,74 @@ if (!TEST) {
 }
 
 
-/* load the correct timeline */
-if (condition == "accept") {
-  timeline.push(...accept_timeline);
-  TRIALS = TRIALS + ACCEPT_TRIALS;
-} else {
-  timeline.push(...propose_timeline);
-  TRIALS = TRIALS + PROPOSE_TRIALS;
+
+/* create timeline */
+var accept_timeline = [];
+var ACCEPT_TRIALS = 0;
+
+/* Display instructions trials */
+var instructions_accept = {
+  type: 'instructions',
+  pages: ["<p>Please pay attention and carefully read the following instructions.</p><p>In this HIT, you are going to play a game. " +
+    "There are two players: you, and a partner. In every round of this game, you and your partner receive " + stakes_txt + " ($" + stakes.toFixed(2) +
+    "), and you must decide how to split it between the two of you.</p><br><p>Here's how it works:</p>",
+    "<p>First, your partner will offer you some portion of the money.</p><p>They can offer you any amount between $0.00 and $" + stakes.toFixed(2) + ".</p>",
+    "<p>Once your partner makes an offer, you may either accept or reject this offer.</p>" +
+    "<p>If you accept the offer, then you will receive the amount of money offered to you, and your partner will get the rest.</p>" +
+    "<p>If you reject the offer, then nobody gets any money in that round.</p><br>",
+    "<p>Since you will be playing this game many times, you will <b>not</b> receive money from every round of the game.</p>" +
+    "<p><b>But, you will receive the amount of money that you earn from a randomly selected round of the game as a bonus through mTurk. </b>" +
+    "For example, if you accepted an offer of $5.00 on the randomly chosen round, you will receive a bonus of $5.00 after the HIT is completed. " +
+    "But, if you rejected your partner's offer of $5.00, you will recieve no bonus at all.</p>" +
+    "<p><b>So, make sure to play each round like real money is up for grabs- you never know which round of the game you will get a bonus from!</b></p>",
+    "<p>In addition to clicking on the buttons, you may use the left and right arrow keys to make quicker responses.</p>",
+    "<img src='img/red_player.png' height='" + stim_size + "'>" +
+    "<img src='img/yellow_player.png' height='" + stim_size + "'>" +
+    "<img src='img/blue_player.png' height='" + stim_size + "'>" +
+    "<p>One more thing about this game: in each round of the game, " +
+    "you will play with one of three partners: Red, Yellow, or Blue. " +
+    "Before each round, you will be told which partner you are playing with.</p>" +
+    "You're now finished with the instructions."],
+  show_clickable_nav: true
+};
+if (!TEST) {
+  timeline.push(instructions_accept);
 }
+
+/* Display check questions and loop until correct */
+var check_choices = ["You get the amount of money specified in the offer, but your partner gets nothing.",
+                     "Neither player recieves any money",
+                     "Your partner gets the amount of money specified in the offer, and you get the rest.",
+                     "You get the amount of money specified in the offer, and your partner gets the rest."];
+if (!TEST) {
+    timeline.push(check_q("check1", "Check question: what happens when you accept an offer?", check_choices, 3),
+		  check_q("check2", "Check question: what happens when you reject an offer?", check_choices, 1));
+}
+
+// Ask for a causal judgment after the player accepts/rejects
+var accept_cause = {
+  type: 'html-slider-response',
+  stimulus: function () {
+    d = jsPsych.data.getLastTrialData().values()[0];
+    return avatar() + "<p>You have " + d.response + "ed " +
+      d.player + "'s offer of $" + d.offer +
+      " out of $" + stakes.toFixed(2) + "." +
+      "As a result, you have earned $" + d.earned + ".</p><br>" +
+      "<p><b>To what extent did you earn $" + d.earned +
+      " in this round because " + d.player +
+      " made an offer of $" + d.offer + "?</b></p><br>"
+  },
+  labels: ["not at all", "totally"],
+  trial_duration: TRIAL_DURATION
+};
+
+
+if (learnTrials > 0) {
+    accept_timeline.push(accept_cause);
+}
+
+
+
 
 /* Display post-questionnaire */
 var sex_q = check_q('sex', '<p>What is your sex?</p>',
@@ -258,6 +201,7 @@ var id_q = {
     delete data.responses;
   }
 };
+ 
 var debrief_q = {
   type: 'survey-text',
   questions: [{name: "debrief", prompt: "The three players you were playing this game with were in fact just computer programs that accept and reject offers at particular rates. " +
@@ -300,13 +244,7 @@ jsPsych.init({
   timeline: timeline,
   experiment_width: 600,
   preload_images: images,
-  show_progress_bar: true,
-  on_trial_start: updateProgress,
   on_finish: async function (data) {
-    // Calculate bonus
-    let b = jsPsych.randomization.sampleWithoutReplacement(data.filter({stage: 1, trait: "fair"}).values(), 1)[0].earned;
-    data.addToAll({bonus: b});
-
     // Display completion screen
     jsPsych.getDisplayElement().innerHTML =
         '<div><p>Thanks for completing this experiment!</p>' +
@@ -323,7 +261,7 @@ jsPsych.init({
         'experimentName': EXP_NAME,
         'curData': data.csv()
     };
-    await $.post("https://dibs-web01.vm.duke.edu/debrigard/UG-causation/exp/save.php",
+    await $.post("https://dibs-web01.vm.duke.edu/debrigard/.../exp/save.php",
                  dataToServer,
                  function(data) {
     	             document.getElementById('done').style.visibility = "visible";
